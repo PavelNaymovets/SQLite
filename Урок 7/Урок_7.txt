@@ -1,0 +1,129 @@
+/*
+1. Создайте представление, которое для каждого курса выводит название, номер последнего
+потока, дату начала обучения последнего потока и среднюю успеваемость курса по всем
+потокам.
+
+Исходные данные
+*/
+SELECT * FROM streams;
+SELECT * FROM courses;
+SELECT * FROM grades;
+/*
+Создадим представление с информацией о курсах
+*/
+CREATE VIEW 'info_about_courses' AS
+SELECT
+courses.name AS 'course_name',
+MAX(number) AS 'max_stream_number',
+streams.started_at AS 'max_started_at',
+AVG(grades.grade) AS 'average_grade'
+FROM streams
+INNER JOIN grades
+ON streams.id = grades.stream_id
+INNER JOIN courses
+ON streams.course_id = courses.id
+GROUP BY streams.course_id;
+SELECT * FROM info_about_courses;
+
+/*
+2. Удалите из базы данных всю информацию, которая относится к преподавателю с
+идентификатором, равным 3. Используйте транзакцию.
+
+Исходные данные
+*/
+.tables
+SELECT * FROM streams;
+SELECT * FROM courses;
+SELECT * FROM grades;
+SELECT * FROM teachers;
+/*
+Как видно из данных мне нужно удалить информацию из таблицы оценок и учителей.
+Напишу для этого транзакцию
+*/
+BEGIN TRANSACTION;
+DELETE FROM grades WHERE teacher_id = 3;
+DELETE FROM teachers WHERE id = 3;
+COMMIT;
+*/
+Проверим результат
+*/
+SELECT * FROM teachers;
+SELECT * FROM grades;
+
+/*
+3. Создайте триггер для таблицы успеваемости, который проверяет значение успеваемости на
+соответствие диапазону чисел от 0 до 5 включительно.
+
+Исходные данные
+*/
+SELECT * FROM grades;
+/*
+Создадим триггер
+*/
+CREATE TRIGGER check_grade_range BEFORE INSERT
+ON grades
+BEGIN
+    SELECT CASE
+    WHEN
+        (NEW.grade NOT BETWEEN 0 AND 5)
+    THEN
+    RAISE(ABORT, 'Wrong value for grade. It is assumed that value to be between 0 and 5')
+    END;
+END;
+/*
+Проверим работу триггера
+*/
+INSERT INTO grades VALUES(3,3,6);
+INSERT INTO grades VALUES(3,3,5.1);
+INSERT INTO grades VALUES(3,3,-1);
+INSERT INTO grades VALUES(3,3,4.9);
+/*
+Последний запрос оказался верным. Проверим, что он дабвился в таблицу и затем удалим его.
+*/
+SELECT * FROM grades;
+DELETE FROM grades WHERE teacher_id = 3;
+SELECT * FROM grades;
+
+/*
+4. Дополнительное задание. Создайте триггер для таблицы потоков, который проверяет, что
+дата начала потока больше текущей даты, а номер потока имеет наибольшее значение среди
+существующих номеров. При невыполнении условий необходимо вызвать ошибку с
+информативным сообщением.
+
+Исходные данные
+*/
+SELECT * FROM streams;
+/*
+Создадим триггер, который проверяет дату и номер потока по отдельности и выдает сообщение об ошибке, если введенные данные неверны.
+Разделил условия для проверки даты и номера потока в разные блоки для удобства. Так понятней где именно неправильно введены данные при выводе
+соответствующего сообщения.
+*/
+CREATE TRIGGER check_date_and_streamNumber BEFORE INSERT
+ON streams
+    BEGIN
+    SELECT CASE
+    WHEN
+        (NEW.started_at <= (SELECT DATE('now')))
+    THEN
+        RAISE(ABORT, 'Wrong value for date')
+    WHEN
+        (NEW.number <= (SELECT MAX(number) from streams))
+    THEN
+        RAISE(ABORT, 'Wrong value for number')
+    END;
+END;
+/*
+Проверим работу триггера. Работа выполнена 10.05.2022. Для проверки корректности работы триггера вставляю именно эту дату в один из инсертов.
+*/
+INSERT INTO streams VALUES(5,5,209,'2021-06-11',1, null);
+INSERT INTO streams VALUES(5,5,209,'2022-06-11',1, null);
+INSERT INTO streams VALUES(5,5,211,'2021-06-11',1, null);
+INSERT INTO streams VALUES(5,5,211,'2022-05-10',1, null);
+INSERT INTO streams VALUES(5,5,211,'2022-06-11',1, null);
+SELECT * FROM streams;
+/*
+Удалим ненужные данные и сам триггер.
+*/
+DELETE FROM streams WHERE id = 5;
+SELECT * FROM streams;
+DROP TRIGGER check_date_and_streamNumber;

@@ -1,0 +1,109 @@
+/*
+1. Найдите общее количество учеников для каждого курса. В отчёт выведите название курса и
+количество учеников по всем потокам курса. Решите задание с применением оконных
+функций.
+
+Исходные данные
+*/
+SELECT * FROM streams;
+SELECT * FROM courses;
+SELECT * FROM grades;
+SELECT * FROM teachers;
+/*
+Применю LEFT JOIN, так как меня интересуют все курсы. Конкретных ограничений и уточнений в
+задаче нет.
+
+Напишу запрос без использования оконных функций.
+*/
+SELECT
+courses.name AS 'course_name',
+SUM(number_of_students) AS 'number_of_students'
+FROM streams
+LEFT JOIN courses
+ON streams.course_id = courses.id
+GROUP BY streams.course_id
+ORDER BY 'number_of_students' ASC;
+/*
+Перепишу запрос с применением оконной функции.
+*/
+SELECT DISTINCT
+courses.name AS 'course_name',
+SUM(number_of_students) OVER(PARTITION BY streams.course_id) AS 'number_of_students'
+FROM streams
+LEFT JOIN courses
+ON streams.course_id = courses.id;
+
+/*
+2. Найдите среднюю оценку по всем потокам для всех учителей. В отчёт выведите
+идентификатор, фамилию и имя учителя, среднюю оценку по всем проведённым потокам.
+Учителя, у которых не было потоков, также должны попасть в выборку. Решите задание с
+применением оконных функций
+
+Исходные данные
+*/
+SELECT * FROM streams;
+SELECT * FROM courses;
+SELECT * FROM grades;
+SELECT * FROM teachers;
+/*
+Применю LEFT JOIN, так как учителя у которых не было потоков должны попасть в выборку.
+
+Напишу запрос без использования оконных функций.
+*/
+SELECT
+teachers.id AS 'id',
+teachers.surname AS 'surname',
+teachers.name AS 'name',
+AVG(grades.grade) AS 'average_grade'
+FROM teachers
+LEFT JOIN grades
+ON teachers.id = grades.teacher_id
+GROUP BY teachers.id;
+/*
+Перепишу запрос с применением оконной функции.
+*/
+SELECT DISTINCT
+teachers.id AS 'id',
+teachers.surname AS 'surname',
+teachers.name AS 'name',
+AVG(grades.grade) OVER(PARTITION BY teachers.id) AS 'average_grade'
+FROM teachers
+LEFT JOIN grades
+ON teachers.id = grades.teacher_id;
+/*
+В ответе нет учителя с ID = 3, так как мы его удалили в предыдущем уроке согласно задания.
+*/
+
+/*
+Какие индексы надо создать для максимально быстрого выполнения представленного
+запроса?
+
+SELECT
+surname,
+name,
+number,
+performance
+FROM academic_performance
+JOIN teachers
+ON academic_performance.teacher_id = teachers.id
+JOIN streams
+ON academic_performance.stream_id = streams.id
+WHERE number >= 200;
+
+В данном случае индекс потребуется только для условия number >= 200. Для поля ID, первичного ключа,
+внешнего ключа и столбцов с уникальным ограничением СУБД автоматически создает неявный индекс. 
+Для имени и фамилии индекс не требуется, так как эти данные приклеиваются к выборке из таблицы
+academic_performance по id. 
+
+Я не могу быть уверенным в том, что создатель таблицы наложил ограничение уникальности на столбец
+number таблицы stream. Поэтому напишу индекс.
+
+CREATE UNIQUE INDEX streams_number_uq ON streams(number);
+*/
+
+/*
+4. Установите SQLiteStudio, подключите базу данных учителей, выполните в графическом
+клиенте любой запрос.
+
+Скрин-шот приложен к архиву
+*/

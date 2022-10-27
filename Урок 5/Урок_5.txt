@@ -1,0 +1,268 @@
+1.Найдите потоки, количество учеников в которых больше или равно 40. В отчет выведите
+номер потока, название курса и количество учеников.
+
+a) Вложенный запрос. Метод заглушки.
+
+sqlite> SELECT
+   ...> number,
+   ...> 'course_name',
+   ...> number_of_students
+   ...> FROM streams;
++--------+---------------+--------------------+
+| number | 'course_name' | number_of_students |
++--------+---------------+--------------------+
+| 165    | course_name   | 34                 |
+| 178    | course_name   | 37                 |
+| 203    | course_name   | 35                 |
+| 210    | course_name   | 41                 |
++--------+---------------+--------------------+
+
+Пишу обращение к другой таблице вместо заглушки:
+
+sqlite> SELECT
+   ...> number,
+   ...> (SELECT name FROM courses WHERE courses.id = streams.course_id) AS course_name,
+   ...> number_of_students
+   ...> FROM streams WHERE number_of_students >= 40;
++--------+-------------+--------------------+
+| number | course_name | number_of_students |
++--------+-------------+--------------------+
+| 210    | База данных | 41                 |
++--------+-------------+--------------------+
+
+b) Union запрос в данном задании применять не совсем уместно, так как он не соответствует условию задания. Нужно вывести 3 столбца с данными. Union запрос
+хорош (как я понял), для случаем, когда выводимые данные можно объединить в один столбец.
+
+2. Найдите два потока с самыми низкими значениями успеваемости. В отчет выведите номер
+потока, название курса, фамилию и имя преподавателя (одним столбцом), оценку
+успеваемости.
+
+a) Вложенный запрос. Метод заглушки.
+
+sqlite> SELECT
+   ...> 'number_of_stream',
+   ...> 'course_name',
+   ...> 'surname',
+   ...> 'name',
+   ...> grade
+   ...> FROM grades;
++--------------------+---------------+-----------+--------+-------+
+| 'number_of_stream' | 'course_name' | 'surname' | 'name' | grade |
++--------------------+---------------+-----------+--------+-------+
+| number_of_stream   | course_name   | surname   | name   | 4.7   |
+| number_of_stream   | course_name   | surname   | name   | 4.9   |
+| number_of_stream   | course_name   | surname   | name   | 4.8   |
+| number_of_stream   | course_name   | surname   | name   | 4.9   |
++--------------------+---------------+-----------+--------+-------+
+
+Пишу обращение к другим таблицам вместо заглушек (Пояснение: такой запрос имеет место быть, но не совсем подходит под условия задачи, так как меня просят
+вывести 2 потока с самыми низкими значениями успеваемости. Если бы самым низки значением успеваемости было 4.9, то такой запрос решил бы задачу ):
+
+sqlite> SELECT
+   ...> (SELECT number FROM streams WHERE streams.id = grades.stream_id) AS 'number_of_stream',
+   ...> (SELECT name FROM courses WHERE courses.id =
+   ...> (SELECT course_id FROM streams)) AS 'course_name',
+   ...> (SELECT surname FROM teachers WHERE teachers.id = grades.teacher_id) AS 'surname',
+   ...> (SELECT name FROM teachers WHERE teachers.id = grades.teacher_id) AS 'name',
+   ...> grade
+   ...> FROM grades
+   ...> WHERE grade = (SELECT MIN(grade) FROM grades);
++------------------+-----------------------+----------+-------+-------+
+| number_of_stream |      course_name      | surname  | name  | grade |
++------------------+-----------------------+----------+-------+-------+
+| 165              | Linux.Рабочая станция | Малышева | Елена | 4.7   |
++------------------+-----------------------+----------+-------+-------+
+
+Поэтому я применю сортировку в порядке убывания и ограничение на вывод данных
+
+sqlite> SELECT
+   ...> (SELECT number FROM streams WHERE streams.id = grades.stream_id) AS 'number_of_stream',
+   ...> (SELECT name FROM courses WHERE courses.id =
+   ...> (SELECT course_id FROM streams WHERE grades.stream_id = streams.id)) AS 'course_name',
+   ...> (SELECT surname FROM teachers WHERE teachers.id = grades.teacher_id) AS 'surname',
+   ...> (SELECT name FROM teachers WHERE teachers.id = grades.teacher_id) AS 'name',
+   ...> grade
+   ...> FROM grades
+   ...> ORDER BY grade ASC LIMIT 2;
++------------------+-----------------------+----------+---------+-------+
+| number_of_stream |      course_name      | surname  |  name   | grade |
++------------------+-----------------------+----------+---------+-------+
+| 165              | Linux.Рабочая станция | Малышева | Елена   | 4.7   |
+| 203              | База данных           | Савельев | Николай | 4.8   |
++------------------+-----------------------+----------+---------+-------+
+
+b) Union запрос. -//-
+
+3.Найдите среднюю успеваемость всех потоков преподавателя Николая Савельева. В отчёт
+выведите идентификатор преподавателя и среднюю оценку по потокам
+
+Исходные данные.
+
+sqlite> SELECT * FROM grades;
++------------+-----------+-------+
+| teacher_id | stream_id | grade |
++------------+-----------+-------+
+| 3          | 1.0       | 4.7   |
+| 2          | 2.0       | 4.9   |
+| 1          | 3.0       | 4.8   |
+| 1          | 4.0       | 4.9   |
++------------+-----------+-------+
+
+sqlite> SELECT * FROM teachers;
++----+---------+----------+------------------------+
+| id |  name   | surname  |         email          |
++----+---------+----------+------------------------+
+| 1  | Николай | Савельев | saveliev.n@mail.ru     |
+| 2  | Наталья | Петрова  | petrova.n@yandex.ru    |
+| 3  | Елена   | Малышева | malisheva.e@google.com |
++----+---------+----------+------------------------+
+
+a) Вложенный запрос в части WHERE.
+
+sqlite> SELECT
+   ...> teacher_id,
+   ...> AVG(grade)
+   ...> FROM grades
+   ...> WHERE grades.teacher_id =
+   ...> (SELECT id FROM teachers WHERE teachers.surname = 'Савельев' AND teachers.name = 'Николай');
++------------+------------+
+| teacher_id | AVG(grade) |
++------------+------------+
+| 1          | 4.85       |
++------------+------------+
+
+b) Union запрос. Задачу можно было бы решить UNION запросом, если бы требовалось вывести целое число в качестве оценки. Чтобы UNION запрос работал
+количество столбцов в запросе и их тип должны совпадать. Тип AVG(grade) = REAL, тип teacher_id = INTEGER.
+
+4.Найдите потоки преподавателя Натальи Петровой, а также потоки, по которым успеваемость
+ниже 4.8. В отчёт выведите идентификатор потока, фамилию и имя преподавателя. В отчёте
+должно быть 3 столбца - номер потока, фамилия преподавателя, имя преподавателя.
+
+a, b) Вложенный запрос. Метод заглушки. UNION запрос.
+
+Метод заглушки для преподавателя Натальи Петровой
+
+sqlite> SELECT
+   ...> 'stream_number',
+   ...> 'teacher_surname',
+   ...> 'teacher_name'
+   ...> FROM grades;
++-----------------+-------------------+----------------+
+| 'stream_number' | 'teacher_surname' | 'teacher_name' |
++-----------------+-------------------+----------------+
+| stream_number   | teacher_surname   | teacher_name   |
+| stream_number   | teacher_surname   | teacher_name   |
+| stream_number   | teacher_surname   | teacher_name   |
+| stream_number   | teacher_surname   | teacher_name   |
++-----------------+-------------------+----------------+
+
+Метод заглушки для потоков с успеваемостью < 4.8
+
+sqlite> SELECT
+   ...> 'stream_number',
+   ...> 'teacher_surname',
+   ...> 'teacher_name'
+   ...> FROM grades WHERE grades.grade < 4.8;
++-----------------+-------------------+----------------+
+| 'stream_number' | 'teacher_surname' | 'teacher_name' |
++-----------------+-------------------+----------------+
+| stream_number   | teacher_surname   | teacher_name   |
++-----------------+-------------------+----------------+
+
+Пишу обращение к другим таблицам вместо заглушек для преподавателя Наталья Петрова:
+
+sqlite> SELECT
+   ...> (SELECT number FROM streams WHERE streams.id =
+   ...> (SELECT id FROM teachers WHERE teachers.surname = 'Петрова' AND teachers.name = 'Наталья')) AS 'stream_number',
+   ...> (SELECT surname FROM teachers WHERE teachers.surname = 'Петрова' AND teachers.name = 'Наталья') AS 'teacher_surname',
+   ...> (SELECT name FROM teachers WHERE teachers.surname = 'Петрова' AND teachers.name = 'Наталья') AS 'teacher_name'
+   ...> FROM grades WHERE grades.teacher_id =
+   ...> (SELECT id FROM teachers WHERE teachers.surname = 'Петрова' AND teachers.name = 'Наталья');
++---------------+-----------------+--------------+
+| stream_number | teacher_surname | teacher_name |
++---------------+-----------------+--------------+
+| 178           | Петрова         | Наталья      |
++---------------+-----------------+--------------+
+
+Пишу обращение к другим таблицам вместо заглушек для потоков с успеваемостью < 4.8:
+
+sqlite> SELECT
+   ...> (SELECT number FROM streams WHERE streams.id = grades.stream_id) AS 'stream_number',
+   ...> (SELECT surname FROM teachers WHERE teachers.id = grades.teacher_id) AS 'teacher_surname',
+   ...> (SELECT name FROM teachers WHERE teachers.id = grades.teacher_id) AS 'teacher_name'
+   ...> FROM grades WHERE grades.grade < 4.8;
++---------------+-----------------+--------------+
+| stream_number | teacher_surname | teacher_name |
++---------------+-----------------+--------------+
+| 165           | Малышева        | Елена        |
++---------------+-----------------+--------------+
+
+Объединяю запросы через UNION запрос, так как у меня несколько условий выбора данных. Для выполнения задачи применяю UNION ALL на
+случай, если один и тот же преподаватель ведет несколько потоков (UNION выводит уникальные значения, UNION ALL все)
+
+sqlite> SELECT
+   ...> (SELECT number FROM streams WHERE streams.id =
+   ...> (SELECT id FROM teachers WHERE teachers.surname = 'Петрова' AND teachers.name = 'Наталья')) AS 'stream_number',
+   ...> (SELECT surname FROM teachers WHERE teachers.surname = 'Петрова' AND teachers.name = 'Наталья') AS 'teacher_surname',
+   ...> (SELECT name FROM teachers WHERE teachers.surname = 'Петрова' AND teachers.name = 'Наталья') AS 'teacher_name'
+   ...> FROM grades WHERE grades.teacher_id =
+   ...> (SELECT id FROM teachers WHERE teachers.surname = 'Петрова' AND teachers.name = 'Наталья')
+   ...> UNION ALL
+   ...> SELECT
+   ...> (SELECT number FROM streams WHERE streams.id = grades.stream_id) AS 'stream_number',
+   ...> (SELECT surname FROM teachers WHERE teachers.id = grades.teacher_id) AS 'teacher_surname',
+   ...> (SELECT name FROM teachers WHERE teachers.id = grades.teacher_id) AS 'teacher_name'
+   ...> FROM grades WHERE grades.grade < 4.8;
++---------------+-----------------+--------------+
+| stream_number | teacher_surname | teacher_name |
++---------------+-----------------+--------------+
+| 178           | Петрова         | Наталья      |
+| 165           | Малышева        | Елена        |
++---------------+-----------------+--------------+
+
+5.Дополнительное задание. Найдите разницу между средней успеваемостью преподавателя с
+наивысшим соответствующим значением и средней успеваемостью преподавателя с
+наименьшим значением. Средняя успеваемость считается по всем потокам преподавателя.
+
+Исходные данные из таблицы оценок
+
+sqlite> SELECT * FROM grades;
++------------+-----------+-------+
+| teacher_id | stream_id | grade |
++------------+-----------+-------+
+| 3          | 1.0       | 4.7   |
+| 2          | 2.0       | 4.9   |
+| 1          | 3.0       | 4.8   |
+| 1          | 4.0       | 4.9   |
++------------+-----------+-------+
+
+Напишем запрос на нахождение среднего значения успеваемости преподавателя по всем потокам
+
+SELECT teacher_id, AVG(grade) AS 'average_grade' FROM grades GROUP BY teacher_id;
++------------+---------------+
+| teacher_id | average_grade |
++------------+---------------+
+| 1          | 4.85          |
+| 2          | 4.9           |
+| 3          | 4.7           |
++------------+---------------+
+
+Применим вложенный запрос для ключевого слова FROM. Сделаем выборку данных из этого вложенного запроса и агрегируем ее. 
+
+Пояснение:
+
+Так как SQLite не позволяет выполнять функцию в функции за один запрос (Например MIN(AVG(grade))) нужно сделать с начала выборку из таблицы оценок
+для нахождения среднего значения успеваемости преподавателя по всем потокам, а затем сделать выборку из этой выборки MAX, MIN значения и агрегировать их
+(провести арифметическую операцию - вычесть MIN из MAX).
+
+ sqlite> SELECT
+   ...> MIN(average_grade),
+   ...> MAX(average_grade),
+   ...> MAX(average_grade) - MIN(average_grade) AS 'the_difference'
+   ...> FROM
+   ...> (SELECT teacher_id, AVG(grade) AS 'average_grade' FROM grades GROUP BY teacher_id);
++--------------------+--------------------+----------------+
+| MIN(average_grade) | MAX(average_grade) | the_difference |
++--------------------+--------------------+----------------+
+| 4.7                | 4.9                | 0.2            |
++--------------------+--------------------+----------------+
