@@ -16,22 +16,22 @@ SELECT * FROM teachers;
 Напишу запрос без использования оконных функций.
 */
 SELECT
-courses.name AS 'course_name',
-SUM(number_of_students) AS 'number_of_students'
+    courses.name AS 'course_name',
+    SUM(number_of_students) AS 'number_of_students'
 FROM streams
-LEFT JOIN courses
-ON streams.course_id = courses.id
+    LEFT JOIN courses
+        ON streams.course_id = courses.id
 GROUP BY streams.course_id
 ORDER BY 'number_of_students' ASC;
 /*
 Перепишу запрос с применением оконной функции.
 */
 SELECT DISTINCT
-courses.name AS 'course_name',
-SUM(number_of_students) OVER(PARTITION BY streams.course_id) AS 'number_of_students'
+    courses.name AS 'course_name',
+    SUM(number_of_students) OVER(PARTITION BY streams.course_id) AS 'number_of_students'
 FROM streams
-LEFT JOIN courses
-ON streams.course_id = courses.id;
+    LEFT JOIN courses
+        ON streams.course_id = courses.id;
 
 /*
 2. Найдите среднюю оценку по всем потокам для всех учителей. В отчёт выведите
@@ -51,25 +51,25 @@ SELECT * FROM teachers;
 Напишу запрос без использования оконных функций.
 */
 SELECT
-teachers.id AS 'id',
-teachers.surname AS 'surname',
-teachers.name AS 'name',
-AVG(grades.grade) AS 'average_grade'
+    teachers.id AS 'id',
+    teachers.surname AS 'surname',
+    teachers.name AS 'name',
+    AVG(grades.grade) AS 'average_grade'
 FROM teachers
-LEFT JOIN grades
-ON teachers.id = grades.teacher_id
+    LEFT JOIN grades
+        ON teachers.id = grades.teacher_id
 GROUP BY teachers.id;
 /*
 Перепишу запрос с применением оконной функции.
 */
 SELECT DISTINCT
-teachers.id AS 'id',
-teachers.surname AS 'surname',
-teachers.name AS 'name',
-AVG(grades.grade) OVER(PARTITION BY teachers.id) AS 'average_grade'
+    teachers.id AS 'id',
+    teachers.surname AS 'surname',
+    teachers.name AS 'name',
+    AVG(grades.grade) OVER(PARTITION BY teachers.id) AS 'average_grade'
 FROM teachers
-LEFT JOIN grades
-ON teachers.id = grades.teacher_id;
+    LEFT JOIN grades
+        ON teachers.id = grades.teacher_id;
 /*
 В ответе нет учителя с ID = 3, так как мы его удалили в предыдущем уроке согласно задания.
 */
@@ -79,15 +79,15 @@ ON teachers.id = grades.teacher_id;
 запроса?
 
 SELECT
-surname,
-name,
-number,
-performance
+    surname,
+    name,
+    number,
+    performance
 FROM academic_performance
-JOIN teachers
-ON academic_performance.teacher_id = teachers.id
-JOIN streams
-ON academic_performance.stream_id = streams.id
+    JOIN teachers
+        ON academic_performance.teacher_id = teachers.id
+    JOIN streams
+        ON academic_performance.stream_id = streams.id
 WHERE number >= 200;
 
 В данном случае индекс потребуется только для условия number >= 200. Для поля ID, первичного ключа,
